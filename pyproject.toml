@@ -4,9 +4,54 @@ version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = []
 
+[dependency-groups]
+dev = [
+    "ruff>=0.9.0",
+]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["main"]
+
+[tool.ruff]
+# Target the Python version you are actively using
+target-version = "py314"
+
+# Community standard line length (same as Black)
+line-length = 88
+
+# Block files you don't want Ruff touching
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = Pyflakes, I = isort, B = flake8-bugbear, UP = pyupgrade
+select = ["E", "W", "F", "I", "B", "UP"]
+
+# Ignore rules that cause annoying friction during local development
+ignore = [
+    "E501", # Line too long (let the formatter handle wrap logic natively)
+    "B008", # Do not perform function calls in argument defaults (annoying for FastAPI/Click)
+]
+
+# Ensure the linter automatically fixes what it can
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+# Groups imports neatly by type (Standard library -> Third-party -> Local)
+combine-as-imports = true
+
+[tool.ruff.format]
+# Enforce predictable, clean style guidelines
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
