@@ -6,7 +6,7 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run
 from the project root:
 
 ```bash
-uv sync --locked
+uv sync
 ```
 
 The project uses Python 3.14, selected by `.python-version`. uv manages `.venv`
@@ -16,15 +16,15 @@ Virtual environment activation is optional when using `uv run`.
 ## Test
 
 ```bash
-uv run --locked pytest
-uv run --locked ruff check .
-uv run --locked basedpyright
+uv run pytest
+uv run ruff check .
+uv run basedpyright
 ```
 
 ## Run
 
 ```bash
-uv run --locked python main.py
+uv run python main.py
 ```
 
 ## Dependencies
