@@ -17,7 +17,11 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["main"]
+py-modules = ["main", "julia_flow"]
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
 
 [tool.pytest.ini_options]
 addopts = [

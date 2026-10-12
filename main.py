@@ -1,6 +1,9 @@
 import math
 from collections.abc import Callable
 
+from julia_flow import maximum_flow
+
+
 def find_eligible_centers(
     points: list[list[int]],
     centers: list[list[int]],
@@ -8,8 +11,11 @@ def find_eligible_centers(
     *,
     distance: Callable[[list[int], list[int]], float] = math.dist,
 ) -> list[list[int]]:
-    """Return, for each point, all center indices within radius."""
-    return [[]]
+    """Return center indices within radius, preserving the order of points."""
+    return [
+        [j for j, center in enumerate(centers) if distance(point, center) <= radius]
+        for point in points
+    ]
 
 
 def find_feasible_assignment(
@@ -19,8 +25,52 @@ def find_feasible_assignment(
     upper_bound: int,
     lower_bound: int = 0,
 ) -> list[int] | None:
-    """Assign each point to an eligible center without exceeding upper or lower bounds."""
-    pass
+    """Return one eligible center index per point, or None if infeasible.
+
+    Input row i and output entry i refer to the same point. All k centers must
+    have loads in [lower_bound, upper_bound], including unused centers.
+    Invalid bounds or center indices raise ValueError; Julia failures raise
+    RuntimeError rather than being treated as infeasible assignments.
+    """
+    if k < 0 or not 0 <= lower_bound <= upper_bound:
+        raise ValueError("Require k >= 0 and 0 <= lower_bound <= upper_bound")
+    if any(not 0 <= j < k for choices in eligible_centers for j in choices):
+        raise ValueError("Eligible center indices must be in range(k)")
+
+    n = len(eligible_centers)
+    if any(not choices for choices in eligible_centers):
+        return None  # A centerless point cannot be assigned.
+    if not k * lower_bound <= n <= k * upper_bound:
+        return None
+    if n == 0:
+        return []
+
+    # newMaxFlow uses one-based indices, source = 1, and sink = last node.
+    # Points occupy 2..n+1; centers occupy n+2..n+k+1.
+    source, overflow, sink = 1, n + k + 2, n + k + 3
+    edges: list[tuple[int, int, int]] = []
+    for i, choices in enumerate(eligible_centers):
+        edges.append((source, i + 2, 1))
+        for j in dict.fromkeys(choices):
+            edges.append((i + 2, n + j + 2, 1))
+    for j in range(k):
+        edges.append((n + j + 2, sink, lower_bound))
+        edges.append((n + j + 2, overflow, min(upper_bound, n) - lower_bound))
+    # Total capacity into sink is n. Sending n units saturates every direct
+    # center -> sink edge, enforcing minimum loads. Extra load uses overflow.
+    edges.append((overflow, sink, n - k * lower_bound))
+
+    max_flow, edge_flows = maximum_flow(sink, edges)
+    if max_flow != n:
+        return None
+
+    assignment = [-1] * n
+    for (u, v, _), flow in zip(edges, edge_flows, strict=True):
+        if 2 <= u <= n + 1 and n + 2 <= v <= n + k + 1 and flow == 1:
+            assignment[u - 2] = v - n - 2
+    if -1 in assignment:
+        raise RuntimeError("Julia returned full flow without a complete assignment")
+    return assignment
 
 
 def solve(
