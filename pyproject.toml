@@ -8,6 +8,7 @@ dependencies = []
 dev = [
     "ruff>=0.9.0",
     "pytest>=9.1.1,<10",
+    "pytest-cov>=7,<8",
     "basedpyright",
 ]
 
@@ -17,6 +18,18 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["main"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=main",
+    "--cov=julia_flow",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-report=html:build/coverage/html",
+]
+
+[tool.coverage.run]
+data_file = "build/coverage/.coverage"
 
 [tool.ruff]
 # Target the Python version you are actively using
