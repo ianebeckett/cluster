@@ -21,6 +21,12 @@ uv run ruff check .
 uv run basedpyright
 ```
 
+To run a specific test file, pass its path from the project root:
+
+```bash
+uv run pytest test/test_find_feasible_assignment.py
+```
+
 ## Run
 
 ```bash

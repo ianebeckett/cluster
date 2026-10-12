@@ -28,9 +28,7 @@ def solve():
     candidates = [[0]]
     radius = 0
     k = 1
-
     C = find_eligible_centers(P, candidates, radius)
-
     U = 0
     assignment = find_feasible_assignment(C, k=k, upper_bound=U)
 
