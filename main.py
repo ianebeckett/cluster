@@ -23,14 +23,21 @@ def find_feasible_assignment(
     pass
 
 
-def solve():
-    P = [[0]]
-    candidates = [[0]]
-    radius = 0
-    k = 1
-    C = find_eligible_centers(P, candidates, radius)
-    U = 0
-    assignment = find_feasible_assignment(C, k=k, upper_bound=U)
+def solve(
+    points: list[list[int]],
+    centers: list[list[int]],
+    radius: float,
+    *,
+    upper_bound: int,
+    lower_bound: int = 0,
+) -> None:
+    eligible_centers = find_eligible_centers(points, centers, radius)
+    assignment = find_feasible_assignment(
+        eligible_centers,
+        k=len(centers),
+        upper_bound=upper_bound,
+        lower_bound=lower_bound,
+    )
 
     if assignment is None:
         print("Infeasible")
@@ -38,8 +45,15 @@ def solve():
         print("Feasible:", assignment)
 
 
-def main():
-    solve()
+def main() -> None:
+    points = [[0]]
+    centers = [[0]]
+
+    # Infeasible: the center has zero capacity.
+    solve(points, centers, radius=0, upper_bound=0)
+
+    # Feasible: the center has capacity for the point.
+    solve(points, centers, radius=0, upper_bound=1)
 
 
 if __name__ == "__main__":
