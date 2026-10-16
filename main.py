@@ -29,9 +29,19 @@ def find_feasible_assignment(
 
     Input row i and output entry i refer to the same point. All k centers must
     have loads in [lower_bound, upper_bound], including unused centers.
+    Booleans are rejected for k, bounds, and center indices with TypeError.
     Invalid bounds or center indices raise ValueError; Julia failures raise
     RuntimeError rather than being treated as infeasible assignments.
     """
+    for name, value in (
+        ("k", k),
+        ("lower_bound", lower_bound),
+        ("upper_bound", upper_bound),
+    ):
+        if isinstance(value, bool):
+            raise TypeError(f"{name} must be an integer, not a boolean")
+    if any(isinstance(j, bool) for choices in eligible_centers for j in choices):
+        raise TypeError("Eligible center indices must be integers, not booleans")
     if k < 0 or not 0 <= lower_bound <= upper_bound:
         raise ValueError("Require k >= 0 and 0 <= lower_bound <= upper_bound")
     if any(not 0 <= j < k for choices in eligible_centers for j in choices):

@@ -61,3 +61,28 @@ def test_find_feasible_assignment(
     for center in range(k):
         load = assignment.count(center)
         assert lower_bound <= load <= upper_bound, f"Center {center} has load {load}"
+
+
+@pytest.mark.parametrize("name", ["k", "lower_bound", "upper_bound"])
+@pytest.mark.parametrize("value", [False, True])
+@pytest.mark.parametrize("eligible_centers", [[], [[0]]])
+def test_rejects_boolean_parameters(
+    name: str, value: bool, eligible_centers: list[list[int]]
+) -> None:
+    parameters = {"k": 1, "lower_bound": 0, "upper_bound": 1}
+    parameters[name] = value
+    with pytest.raises(TypeError, match=f"{name} must be an integer, not a boolean"):
+        _ = find_feasible_assignment(
+            eligible_centers,
+            k=parameters["k"],
+            lower_bound=parameters["lower_bound"],
+            upper_bound=parameters["upper_bound"],
+        )
+
+
+@pytest.mark.parametrize("center", [False, True])
+def test_rejects_boolean_center_indices(center: bool) -> None:
+    with pytest.raises(
+        TypeError, match="Eligible center indices must be integers, not booleans"
+    ):
+        _ = find_feasible_assignment([[center]], k=2, upper_bound=1)
