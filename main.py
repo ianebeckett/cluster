@@ -58,13 +58,13 @@ def find_feasible_assignment(
     # newMaxFlow uses one-based indices, source = 1, and sink = last node.
     # Points occupy 2..n+1; centers occupy n+2..n+k+1.
     offset = 2
-    unit_flow = 1
     source, overflow, sink = 1, n + k + offset, n + k + 1 + offset
+    # each edge is described as [u, v, capacity]
     edges: list[tuple[int, int, int]] = []
     for point, choices in enumerate(eligible_centers):
-        edges.append((source, point + offset, unit_flow))
+        edges.append((source, point + offset, 1))
         for center in dict.fromkeys(choices):
-            edges.append((point + offset, n + center + offset, unit_flow))
+            edges.append((point + offset, n + center + offset, 1))
     for center in range(k):
         edges.append((n + center + offset, sink, lower_bound))
         edges.append((n + center + offset, overflow, min(upper_bound, n) - lower_bound))
@@ -80,7 +80,7 @@ def find_feasible_assignment(
     # note: Assignment by index assumes the flow solver returns edges in the
     # order they were given.
     for (u, v, _), flow in zip(edges, edge_flows, strict=True):
-        if offset <= u <= n + 1 and n + offset <= v <= n + k + 1 and flow == unit_flow:
+        if offset <= u <= n + 1 and n + offset <= v <= n + k + 1 and flow == 1:
             assignment[u - offset] = v - n - offset
     if -1 in assignment:
         raise RuntimeError("Julia returned full flow without a complete assignment")
