@@ -1,4 +1,5 @@
 import math
+from bisect import bisect_left
 from collections.abc import Callable
 
 from julia_flow import maximum_flow
@@ -85,6 +86,58 @@ def find_feasible_assignment(
     if -1 in assignment:
         raise RuntimeError("Julia returned full flow without a complete assignment")
     return assignment
+
+
+def find_min_radius(
+    points: list[list[int]],
+    centers: list[list[int]],
+    *,
+    upper_bound: int,
+    lower_bound: int = 0,
+    distance: Callable[[list[int], list[int]], float] = math.dist,
+) -> float | None:
+    """Return the smallest feasible point-center distance, or None if impossible.
+
+    Centers are fixed and each must have a load in [lower_bound, upper_bound].
+    Empty points have radius 0.0 when the load bounds permit it. Distances must
+    be finite and nonnegative. Solver failures propagate as RuntimeError.
+    """
+    for name, value in (("lower_bound", lower_bound), ("upper_bound", upper_bound)):
+        if isinstance(value, bool):
+            raise TypeError(f"{name} must be an integer, not a boolean")
+    if not 0 <= lower_bound <= upper_bound:
+        raise ValueError("Require 0 <= lower_bound <= upper_bound")
+
+    n, k = len(points), len(centers)
+    if not k * lower_bound <= n <= k * upper_bound:
+        return None
+    if n == 0:
+        return 0.0
+
+    distances = [[distance(point, center) for center in centers] for point in points]
+    radii = sorted({value for row in distances for value in row})
+    if any(not math.isfinite(radius) or radius < 0 for radius in radii):
+        raise ValueError("Distances must be finite and nonnegative")
+
+    def is_feasible(radius: float) -> bool:
+        eligible_centers = [
+            [center for center, value in enumerate(row) if value <= radius]
+            for row in distances
+        ]
+        return (
+            find_feasible_assignment(
+                eligible_centers,
+                k=k,
+                upper_bound=upper_bound,
+                lower_bound=lower_bound,
+            )
+            is not None
+        )
+
+    # Feasibility is monotone: increasing the radius only adds eligible edges.
+    # bisect_left locates the first True without evaluating every candidate.
+    index = bisect_left(radii, True, key=is_feasible)
+    return radii[index] if index < len(radii) else None
 
 
 def solve(
