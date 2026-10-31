@@ -64,8 +64,8 @@
 <text xml:space="preserve" text-anchor="start" x="335.5" y="-95.19" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;eligible_centers: list[list[int]],</text>
 <text xml:space="preserve" text-anchor="start" x="335.5" y="-81.69" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;*,</text>
 <text xml:space="preserve" text-anchor="start" x="335.5" y="-68.19" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;k: int,</text>
-<text xml:space="preserve" text-anchor="start" x="335.5" y="-54.69" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;upper_bound: int,</text>
-<text xml:space="preserve" text-anchor="start" x="335.5" y="-41.19" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;lower_bound: int = 0,</text>
+<text xml:space="preserve" text-anchor="start" x="335.5" y="-54.69" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;U: int,</text>
+<text xml:space="preserve" text-anchor="start" x="335.5" y="-41.19" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;L: int = 0,</text>
 <text xml:space="preserve" text-anchor="start" x="335.5" y="-27.69" font-family="DejaVu Sans" font-size="11.00" fill="#000000">) &#45;&gt; list[int] | None</text>
 </a>
 </g>
@@ -79,8 +79,8 @@
 <text xml:space="preserve" text-anchor="start" x="414.75" y="-342.22" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;points: list[list[int]],</text>
 <text xml:space="preserve" text-anchor="start" x="414.75" y="-328.72" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;centers: list[list[int]],</text>
 <text xml:space="preserve" text-anchor="start" x="414.75" y="-315.22" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;*,</text>
-<text xml:space="preserve" text-anchor="start" x="414.75" y="-301.72" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;upper_bound: int,</text>
-<text xml:space="preserve" text-anchor="start" x="414.75" y="-288.22" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;lower_bound: int = 0,</text>
+<text xml:space="preserve" text-anchor="start" x="414.75" y="-301.72" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;U: int,</text>
+<text xml:space="preserve" text-anchor="start" x="414.75" y="-288.22" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;L: int = 0,</text>
 <text xml:space="preserve" text-anchor="start" x="414.75" y="-274.72" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;distance: Callable[[list[int], list[int]], float] = math.dist,</text>
 <text xml:space="preserve" text-anchor="start" x="414.75" y="-261.22" font-family="DejaVu Sans" font-size="11.00" fill="#000000">) &#45;&gt; float | None</text>
 </a>
@@ -111,8 +111,8 @@
 <text xml:space="preserve" text-anchor="start" x="221.75" y="-504.5" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;points: list[list[int]],</text>
 <text xml:space="preserve" text-anchor="start" x="221.75" y="-491" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;centers: list[list[int]],</text>
 <text xml:space="preserve" text-anchor="start" x="221.75" y="-477.5" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;*,</text>
-<text xml:space="preserve" text-anchor="start" x="221.75" y="-464" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;upper_bound: int,</text>
-<text xml:space="preserve" text-anchor="start" x="221.75" y="-450.5" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;lower_bound: int = 0,</text>
+<text xml:space="preserve" text-anchor="start" x="221.75" y="-464" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;U: int,</text>
+<text xml:space="preserve" text-anchor="start" x="221.75" y="-450.5" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;L: int = 0,</text>
 <text xml:space="preserve" text-anchor="start" x="221.75" y="-437" font-family="DejaVu Sans" font-size="11.00" fill="#000000"> &#160;&#160;&#160;distance: Callable[[list[int], list[int]], float] = math.dist,</text>
 <text xml:space="preserve" text-anchor="start" x="221.75" y="-423.5" font-family="DejaVu Sans" font-size="11.00" fill="#000000">) &#45;&gt; None</text>
 </a>

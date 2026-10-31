@@ -31,7 +31,7 @@ def test_custom_distance() -> None:
 
 def test_geometry_to_assignment() -> None:
     choices = find_eligible_centers([[1], [0]], [[0], [2]], radius=1)
-    assert find_feasible_assignment(choices, k=2, lower_bound=1, upper_bound=1) == [
+    assert find_feasible_assignment(choices, k=2, L=1, U=1) == [
         1,
         0,
     ]

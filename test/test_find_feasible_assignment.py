@@ -4,13 +4,15 @@ from main import find_feasible_assignment
 
 
 @pytest.mark.parametrize(
-    "eligible_centers,k,lower_bound,upper_bound,feasible",
+    "eligible_centers,k,L,U,feasible",
     [
         pytest.param([], 0, 0, 0, True, id="no-points-no-centers"),
         pytest.param([], 1, 0, 1, True, id="no-points-zero-minimum-load"),
         pytest.param([[0], []], 1, 0, 2, False, id="one-centerless-point"),
         pytest.param([[0]], 1, 0, 0, False, id="zero-capacity"),
-        pytest.param([[0], [0], [1, 2]], 3, 0, 1, False, id="shared-center-capacity-exceeded"),
+        pytest.param(
+            [[0], [0], [1, 2]], 3, 0, 1, False, id="shared-center-capacity-exceeded"
+        ),
         # Point 0 must use center 1; center 2 must remain empty because no point
         # is eligible for it. Its zero minimum load allows this.
         pytest.param(
@@ -36,15 +38,15 @@ from main import find_feasible_assignment
 def test_find_feasible_assignment(
     eligible_centers: list[list[int]],
     k: int,
-    lower_bound: int,
-    upper_bound: int,
+    L: int,
+    U: int,
     feasible: bool,
 ) -> None:
     assignment = find_feasible_assignment(
         eligible_centers=eligible_centers,
         k=k,
-        lower_bound=lower_bound,
-        upper_bound=upper_bound,
+        L=L,
+        U=U,
     )
     if not feasible:
         assert assignment is None
@@ -60,23 +62,23 @@ def test_find_feasible_assignment(
         )
     for center in range(k):
         load = assignment.count(center)
-        assert lower_bound <= load <= upper_bound, f"Center {center} has load {load}"
+        assert L <= load <= U, f"Center {center} has load {load}"
 
 
-@pytest.mark.parametrize("name", ["k", "lower_bound", "upper_bound"])
+@pytest.mark.parametrize("name", ["k", "L", "U"])
 @pytest.mark.parametrize("value", [False, True])
 @pytest.mark.parametrize("eligible_centers", [[], [[0]]])
 def test_rejects_boolean_parameters(
     name: str, value: bool, eligible_centers: list[list[int]]
 ) -> None:
-    parameters = {"k": 1, "lower_bound": 0, "upper_bound": 1}
+    parameters = {"k": 1, "L": 0, "U": 1}
     parameters[name] = value
     with pytest.raises(TypeError, match=f"{name} must be an integer, not a boolean"):
         _ = find_feasible_assignment(
             eligible_centers,
             k=parameters["k"],
-            lower_bound=parameters["lower_bound"],
-            upper_bound=parameters["upper_bound"],
+            L=parameters["L"],
+            U=parameters["U"],
         )
 
 
@@ -85,4 +87,4 @@ def test_rejects_boolean_center_indices(center: bool) -> None:
     with pytest.raises(
         TypeError, match="Eligible center indices must be integers, not booleans"
     ):
-        _ = find_feasible_assignment([[center]], k=2, upper_bound=1)
+        _ = find_feasible_assignment([[center]], k=2, U=1)

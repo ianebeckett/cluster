@@ -9,7 +9,7 @@ from main import find_min_radius
 
 
 @pytest.mark.parametrize(
-    "points,centers,lower_bound,upper_bound,expected",
+    "points,centers,L,U,expected",
     [
         pytest.param([[0]], [[0]], 0, 1, 0.0, id="zero-radius"),
         pytest.param([[1]], [[0], [10]], 0, 1, 1.0, id="first-candidate"),
@@ -33,16 +33,11 @@ from main import find_min_radius
 def test_find_min_radius(
     points: list[list[int]],
     centers: list[list[int]],
-    lower_bound: int,
-    upper_bound: int,
+    L: int,
+    U: int,
     expected: float | None,
 ) -> None:
-    assert (
-        find_min_radius(
-            points, centers, lower_bound=lower_bound, upper_bound=upper_bound
-        )
-        == expected
-    )
+    assert find_min_radius(points, centers, L=L, U=U) == expected
 
 
 def test_custom_distance() -> None:
@@ -53,8 +48,8 @@ def test_custom_distance() -> None:
         find_min_radius(
             [[0, 0], [1, 1]],
             [[0, 0], [3, 3]],
-            lower_bound=1,
-            upper_bound=1,
+            L=1,
+            U=1,
             distance=manhattan,
         )
         == 4.0
@@ -63,7 +58,7 @@ def test_custom_distance() -> None:
 
 @pytest.mark.parametrize("points", [[], [[0]]])
 @pytest.mark.parametrize(
-    "lower_bound,upper_bound,error",
+    "L,U,error",
     [
         (-1, 1, ValueError),
         (0, -1, ValueError),
@@ -74,14 +69,12 @@ def test_custom_distance() -> None:
 )
 def test_invalid_bounds(
     points: list[list[int]],
-    lower_bound: int,
-    upper_bound: int,
+    L: int,
+    U: int,
     error: type[Exception],
 ) -> None:
     with pytest.raises(error):
-        _ = find_min_radius(
-            points, [[0]], lower_bound=lower_bound, upper_bound=upper_bound
-        )
+        _ = find_min_radius(points, [[0]], L=L, U=U)
 
 
 @pytest.mark.parametrize("value", [-1.0, math.inf, -math.inf, math.nan])
@@ -90,7 +83,7 @@ def test_invalid_distance(value: float) -> None:
         return value
 
     with pytest.raises(ValueError, match="finite and nonnegative"):
-        _ = find_min_radius([[0]], [[1]], upper_bound=1, distance=distance)
+        _ = find_min_radius([[0]], [[1]], U=1, distance=distance)
 
 
 def test_solver_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -101,7 +94,7 @@ def test_solver_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(main, "maximum_flow", fail)
     with pytest.raises(RuntimeError, match="Solver failed"):
-        _ = find_min_radius([[0]], [[1]], upper_bound=1)
+        _ = find_min_radius([[0]], [[1]], U=1)
 
 
 @pytest.mark.parametrize("seed", range(20))
@@ -109,15 +102,14 @@ def test_matches_exhaustive_assignments(seed: int) -> None:
     rng = Random(seed)
     points = [[rng.randrange(8), rng.randrange(8)] for _ in range(rng.randint(1, 5))]
     centers = [[rng.randrange(8), rng.randrange(8)] for _ in range(rng.randint(1, 3))]
-    lower_bound = rng.randrange(3)
-    upper_bound = rng.randint(max(1, lower_bound), len(points) + lower_bound)
+    L = rng.randrange(3)
+    U = rng.randint(max(1, L), len(points) + L)
 
     # Enumerate whole assignments independently of binary search and max flow.
     expected: float | None = None
     for assignment in product(range(len(centers)), repeat=len(points)):
         if not all(
-            lower_bound <= assignment.count(center) <= upper_bound
-            for center in range(len(centers))
+            L <= assignment.count(center) <= U for center in range(len(centers))
         ):
             continue
         radius = max(
@@ -127,9 +119,4 @@ def test_matches_exhaustive_assignments(seed: int) -> None:
         if expected is None or radius < expected:
             expected = radius
 
-    assert (
-        find_min_radius(
-            points, centers, lower_bound=lower_bound, upper_bound=upper_bound
-        )
-        == expected
-    )
+    assert find_min_radius(points, centers, L=L, U=U) == expected

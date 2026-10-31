@@ -23,35 +23,35 @@ def find_feasible_assignment(
     eligible_centers: list[list[int]],
     *,
     k: int,
-    upper_bound: int,
-    lower_bound: int = 0,
+    U: int,
+    L: int = 0,
 ) -> list[int] | None:
     """Return one eligible center index per point, or None if infeasible.
 
     Input row i and output entry i refer to the same point. All k centers must
-    have loads in [lower_bound, upper_bound], including unused centers.
+    have loads in [L, U], including unused centers.
     Booleans are rejected for k, bounds, and center indices with TypeError.
     Invalid bounds or center indices raise ValueError; Julia failures raise
     RuntimeError rather than being treated as infeasible assignments.
     """
     for name, value in (
         ("k", k),
-        ("lower_bound", lower_bound),
-        ("upper_bound", upper_bound),
+        ("L", L),
+        ("U", U),
     ):
         if isinstance(value, bool):
             raise TypeError(f"{name} must be an integer, not a boolean")
     if any(isinstance(j, bool) for choices in eligible_centers for j in choices):
         raise TypeError("Eligible center indices must be integers, not booleans")
-    if k < 0 or not 0 <= lower_bound <= upper_bound:
-        raise ValueError("Require k >= 0 and 0 <= lower_bound <= upper_bound")
+    if k < 0 or not 0 <= L <= U:
+        raise ValueError("Require k >= 0 and 0 <= L <= U")
     if any(not 0 <= j < k for choices in eligible_centers for j in choices):
         raise ValueError("Eligible center indices must be in range(k)")
 
     n = len(eligible_centers)
     if any(not choices for choices in eligible_centers):
         return None  # A centerless point cannot be assigned.
-    if not k * lower_bound <= n <= k * upper_bound:
+    if not k * L <= n <= k * U:
         return None
     if n == 0:
         return []
@@ -67,11 +67,11 @@ def find_feasible_assignment(
         for center in dict.fromkeys(choices):
             edges.append((point + offset, n + center + offset, 1))
     for center in range(k):
-        edges.append((n + center + offset, sink, lower_bound))
-        edges.append((n + center + offset, overflow, min(upper_bound, n) - lower_bound))
+        edges.append((n + center + offset, sink, L))
+        edges.append((n + center + offset, overflow, min(U, n) - L))
     # Total capacity into sink is n. Sending n units saturates every direct
     # center -> sink edge, enforcing minimum loads. Extra load uses overflow.
-    edges.append((overflow, sink, n - k * lower_bound))
+    edges.append((overflow, sink, n - k * L))
 
     max_flow, edge_flows = maximum_flow(sink, edges)
     if max_flow != n:
@@ -92,24 +92,24 @@ def find_min_radius(
     points: list[list[int]],
     centers: list[list[int]],
     *,
-    upper_bound: int,
-    lower_bound: int = 0,
+    U: int,
+    L: int = 0,
     distance: Callable[[list[int], list[int]], float] = math.dist,
 ) -> float | None:
     """Return the smallest feasible point-center distance, or None if impossible.
 
-    Centers are fixed and each must have a load in [lower_bound, upper_bound].
+    Centers are fixed and each must have a load in [L, U].
     Empty points have radius 0.0 when the load bounds permit it. Distances must
     be finite and nonnegative. Solver failures propagate as RuntimeError.
     """
-    for name, value in (("lower_bound", lower_bound), ("upper_bound", upper_bound)):
+    for name, value in (("L", L), ("U", U)):
         if isinstance(value, bool):
             raise TypeError(f"{name} must be an integer, not a boolean")
-    if not 0 <= lower_bound <= upper_bound:
-        raise ValueError("Require 0 <= lower_bound <= upper_bound")
+    if not 0 <= L <= U:
+        raise ValueError("Require 0 <= L <= U")
 
     n, k = len(points), len(centers)
-    if not k * lower_bound <= n <= k * upper_bound:
+    if not k * L <= n <= k * U:
         return None
     if n == 0:
         return 0.0
@@ -128,8 +128,8 @@ def find_min_radius(
             find_feasible_assignment(
                 eligible_centers,
                 k=k,
-                upper_bound=upper_bound,
-                lower_bound=lower_bound,
+                U=U,
+                L=L,
             )
             is not None
         )
@@ -144,16 +144,16 @@ def solve(
     points: list[list[int]],
     centers: list[list[int]],
     *,
-    upper_bound: int,
-    lower_bound: int = 0,
+    U: int,
+    L: int = 0,
     distance: Callable[[list[int], list[int]], float] = math.dist,
 ) -> None:
     """Print the minimum feasible radius and an assignment for fixed centers."""
     radius = find_min_radius(
         points,
         centers,
-        upper_bound=upper_bound,
-        lower_bound=lower_bound,
+        U=U,
+        L=L,
         distance=distance,
     )
     if radius is None:
@@ -165,8 +165,8 @@ def solve(
     assignment = find_feasible_assignment(
         eligible_centers,
         k=len(centers),
-        upper_bound=upper_bound,
-        lower_bound=lower_bound,
+        U=U,
+        L=L,
     )
 
     if assignment is None:
@@ -192,14 +192,14 @@ def main() -> None:
 
     # Both points fit at center 0, so the minimum radius is 1.
     print("\nCapacity 2 per center:")
-    solve(points, centers, upper_bound=2)
+    solve(points, centers, U=2)
 
     # Center 1 must receive a point. Point 1 is its closest option, at distance 9.
     print("\nExactly 1 point per center:")
-    solve(points, centers, lower_bound=1, upper_bound=1)
+    solve(points, centers, L=1, U=1)
 
     print("\nZero capacity:")
-    solve(points, centers, upper_bound=0)
+    solve(points, centers, U=0)
 
 
 if __name__ == "__main__":

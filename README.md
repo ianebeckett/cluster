@@ -73,7 +73,7 @@ An assignment is feasible only when every point can be assigned and every
 center's load is between the supplied minimum and capacity. Julia's flow value
 must equal the number of points; the assignment is extracted from its edge flows.
 
-`find_min_radius(points, centers, upper_bound=..., lower_bound=0)` finds the
+`find_min_radius(points, centers, U=..., L=0)` finds the
 smallest feasible radius for the supplied centers. It computes each point-center
 distance once, sorts the distinct distances, and uses `bisect_left` with an
 assignment feasibility check. No radius tolerance is needed. It returns `None`
