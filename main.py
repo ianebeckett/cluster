@@ -12,7 +12,10 @@ def find_eligible_centers(
     *,
     distance: Callable[[list[int], list[int]], float] = math.dist,
 ) -> list[list[int]]:
-    """Return center indices within radius, preserving the order of points."""
+    """Return eligible center indices for each point, preserving input order.
+
+    Result row i contains indices into centers for points[i]
+    """
     return [
         [j for j, center in enumerate(centers) if distance(point, center) <= radius]
         for point in points
@@ -20,7 +23,7 @@ def find_eligible_centers(
 
 
 def find_feasible_assignment(
-    eligible_centers: list[list[int]],
+    eligible_centers_by_point: list[list[int]],
     *,
     k: int,
     U: int,
@@ -28,9 +31,11 @@ def find_feasible_assignment(
 ) -> list[int] | None:
     """Return one eligible center index per point, or None if infeasible.
 
-    Input row i and output entry i refer to the same point. All k centers must
-    have loads in [L, U], including unused centers.
+    eligible_centers_by_point[i] lists center indices eligible for points[i]
+    in the original input order. Output entry i refers to that same point.
+    All k centers must have loads in [L, U].
     Booleans are rejected for k, bounds, and center indices with TypeError.
+    Bounds must satisfy 0 <= L <= U <= n, where n is the number of points.
     Invalid bounds or center indices raise ValueError; Julia failures raise
     RuntimeError rather than being treated as infeasible assignments.
     """
@@ -41,15 +46,17 @@ def find_feasible_assignment(
     ):
         if isinstance(value, bool):
             raise TypeError(f"{name} must be an integer, not a boolean")
-    if any(isinstance(j, bool) for choices in eligible_centers for j in choices):
+    if any(
+        isinstance(j, bool) for choices in eligible_centers_by_point for j in choices
+    ):
         raise TypeError("Eligible center indices must be integers, not booleans")
     if k < 0 or not 0 <= L <= U:
         raise ValueError("Require k >= 0 and 0 <= L <= U")
-    if any(not 0 <= j < k for choices in eligible_centers for j in choices):
+    if any(not 0 <= j < k for choices in eligible_centers_by_point for j in choices):
         raise ValueError("Eligible center indices must be in range(k)")
 
     n = len(eligible_centers)
-    if any(not choices for choices in eligible_centers):
+    if any(not choices for choices in eligible_centers_by_point):
         return None  # A centerless point cannot be assigned.
     if not k * L <= n <= k * U:
         return None
@@ -62,7 +69,7 @@ def find_feasible_assignment(
     source, overflow, sink = 1, n + k + offset, n + k + 1 + offset
     # each edge is described as [u, v, capacity]
     edges: list[tuple[int, int, int]] = []
-    for point, choices in enumerate(eligible_centers):
+    for point, choices in enumerate(eligible_centers_by_point):
         edges.append((source, point + offset, 1))
         for center in dict.fromkeys(choices):
             edges.append((point + offset, n + center + offset, 1))
@@ -120,13 +127,13 @@ def find_min_radius(
         raise ValueError("Distances must be finite and nonnegative")
 
     def is_feasible(radius: float) -> bool:
-        eligible_centers = [
+        eligible_centers_by_point = [
             [center for center, value in enumerate(row) if value <= radius]
             for row in distances
         ]
         return (
             find_feasible_assignment(
-                eligible_centers,
+                eligible_centers_by_point,
                 k=k,
                 U=U,
                 L=L,
@@ -161,9 +168,11 @@ def solve(
         return
 
     # Reconstruct an assignment at the minimum radius returned by the search.
-    eligible_centers = find_eligible_centers(points, centers, radius, distance=distance)
+    eligible_centers_by_point = find_eligible_centers(
+        points, centers, radius, distance=distance
+    )
     assignment = find_feasible_assignment(
-        eligible_centers,
+        eligible_centers_by_point,
         k=len(centers),
         U=U,
         L=L,

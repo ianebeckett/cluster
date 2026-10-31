@@ -4,7 +4,7 @@ from main import find_feasible_assignment
 
 
 @pytest.mark.parametrize(
-    "eligible_centers,k,L,U,feasible",
+    "eligible_centers_by_point,k,L,U",
     [
         pytest.param([], 0, 0, 0, True, id="no-points-no-centers"),
         pytest.param([], 1, 0, 1, True, id="no-points-zero-minimum-load"),
@@ -36,14 +36,14 @@ from main import find_feasible_assignment
     ],
 )
 def test_find_feasible_assignment(
-    eligible_centers: list[list[int]],
+    eligible_centers_by_point: list[list[int]],
     k: int,
     L: int,
     U: int,
     feasible: bool,
 ) -> None:
     assignment = find_feasible_assignment(
-        eligible_centers=eligible_centers,
+        eligible_centers_by_point=eligible_centers_by_point,
         k=k,
         L=L,
         U=U,
@@ -54,10 +54,12 @@ def test_find_feasible_assignment(
 
     # Accept any assignment satisfying the contract, regardless of solver order.
     assert assignment is not None
-    assert len(assignment) == len(eligible_centers), "Every point must be assigned"
+    assert len(assignment) == len(eligible_centers_by_point), (
+        "Every point must be assigned"
+    )
     for i, center in enumerate(assignment):
         assert 0 <= center < k, f"Point {i} has invalid center index {center}"
-        assert center in eligible_centers[i], (
+        assert center in eligible_centers_by_point[i], (
             f"Point {i} has ineligible center {center}"
         )
     for center in range(k):
@@ -67,15 +69,15 @@ def test_find_feasible_assignment(
 
 @pytest.mark.parametrize("name", ["k", "L", "U"])
 @pytest.mark.parametrize("value", [False, True])
-@pytest.mark.parametrize("eligible_centers", [[], [[0]]])
+@pytest.mark.parametrize("eligible_centers_by_point", [[], [[0]]])
 def test_rejects_boolean_parameters(
-    name: str, value: bool, eligible_centers: list[list[int]]
+    name: str, value: bool, eligible_centers_by_point: list[list[int]]
 ) -> None:
     parameters = {"k": 1, "L": 0, "U": 1}
     parameters[name] = value
     with pytest.raises(TypeError, match=f"{name} must be an integer, not a boolean"):
         _ = find_feasible_assignment(
-            eligible_centers,
+            eligible_centers_by_point,
             k=parameters["k"],
             L=parameters["L"],
             U=parameters["U"],

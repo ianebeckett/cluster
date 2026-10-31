@@ -67,8 +67,11 @@ prints both the radius and the actual maximum assigned distance. Reconstruction
 performs one additional assignment solve after the radius search.
 
 `find_eligible_centers` computes the allowed center indices for each point within
-the trial radius, preserving point order. `find_feasible_assignment` uses these
-lists to build a network and calls `newMaxFlow.maxflow` through `julia_flow.py`.
+the trial radius, preserving point order. In `eligible_centers_by_point[i]`,
+`i` is the position of `points[i]` in the original input, and the row contains
+indices into `centers`.
+`find_feasible_assignment` uses these lists to build a network and calls
+`newMaxFlow.maxflow` through `julia_flow.py`.
 An assignment is feasible only when every point can be assigned and every
 center's load is between the supplied minimum and capacity. Julia's flow value
 must equal the number of points; the assignment is extracted from its edge flows.
