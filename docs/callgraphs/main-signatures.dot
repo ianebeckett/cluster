@@ -1,0 +1,24 @@
+digraph G {
+    graph [label="main.py - Full function signatures\nPyan static uses graph; external calls are omitted.\nDashed edge: callback passed to bisect_left.", labelloc=t, fontname="DejaVu Sans", fontsize=14, bgcolor="white", pad=0.3];
+    node [shape=box, fontname="DejaVu Sans", fontsize=11, margin="0.18,0.12"];
+    edge [fontname="DejaVu Sans", fontsize=10, arrowsize=0.8];
+    graph [rankdir=TB, ranksep=0.5, layout=dot];
+    subgraph "cluster_G" {
+
+        graph [style="filled,rounded", fillcolor="#80808018", label=""];
+        "main" [label="main.py (module entry)", style="rounded,filled", fillcolor="#ffffffb2", fontcolor="#000000", group="0", tooltip="main\n/home/ian/school/cluster/main.py"];
+        "main__find_eligible_centers" [label="find_eligible_centers(\l    points: list[list[int]],\l    centers: list[list[int]],\l    radius: float,\l    *,\l    distance: Callable[[list[int], list[int]], float] = math.dist,\l) -> list[list[int]]\l", style="rounded,filled", fillcolor="#e8f1fb", fontcolor="#000000", group="0", tooltip="main.find_eligible_centers\n/home/ian/school/cluster/main.py:8\nfunction in main"];
+        "main__find_feasible_assignment" [label="find_feasible_assignment(\l    eligible_centers: list[list[int]],\l    *,\l    k: int,\l    upper_bound: int,\l    lower_bound: int = 0,\l) -> list[int] | None\l", style="rounded,filled", fillcolor="#e8f1fb", fontcolor="#000000", group="0", tooltip="main.find_feasible_assignment\n/home/ian/school/cluster/main.py:22\nfunction in main"];
+        "main__find_min_radius" [label="find_min_radius(\l    points: list[list[int]],\l    centers: list[list[int]],\l    *,\l    upper_bound: int,\l    lower_bound: int = 0,\l    distance: Callable[[list[int], list[int]], float] = math.dist,\l) -> float | None\l", style="rounded,filled", fillcolor="#e8f1fb", fontcolor="#000000", group="0", tooltip="main.find_min_radius\n/home/ian/school/cluster/main.py:91\nfunction in main"];
+        "main__main" [label="main() -> None", style="rounded,filled", fillcolor="#e8f1fb", fontcolor="#000000", group="0", tooltip="main.main\n/home/ian/school/cluster/main.py:187\nfunction in main"];
+        "main__solve" [label="solve(\l    points: list[list[int]],\l    centers: list[list[int]],\l    *,\l    upper_bound: int,\l    lower_bound: int = 0,\l    distance: Callable[[list[int], list[int]], float] = math.dist,\l) -> None\l", style="rounded,filled", fillcolor="#e8f1fb", fontcolor="#000000", group="0", tooltip="main.solve\n/home/ian/school/cluster/main.py:143\nfunction in main"];
+        "main__find_min_radius__is_feasible" [label="is_feasible(radius: float) -> bool", style="rounded,filled", fillcolor="#d5e5f8", fontcolor="#000000", group="0", tooltip="main.find_min_radius.is_feasible\n/home/ian/school/cluster/main.py:122\nfunction in main.find_min_radius"];
+    }
+        "main" -> "main__main" [style="solid",  color="#000000"];
+        "main__find_min_radius" -> "main__find_min_radius__is_feasible" [style="dashed", label="key callback",  color="#000000"];
+        "main__find_min_radius__is_feasible" -> "main__find_feasible_assignment" [style="solid",  color="#000000"];
+        "main__main" -> "main__solve" [style="solid",  color="#000000"];
+        "main__solve" -> "main__find_eligible_centers" [style="solid",  color="#000000"];
+        "main__solve" -> "main__find_feasible_assignment" [style="solid",  color="#000000"];
+        "main__solve" -> "main__find_min_radius" [style="solid",  color="#000000"];
+    }

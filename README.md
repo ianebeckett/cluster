@@ -86,6 +86,25 @@ process until Python exits or `julia_flow.close()` is called. Missing Julia,
 missing solver source, and solver failures raise `RuntimeError`, rather than
 returning `None` for an infeasible assignment.
 
+## Call graphs
+
+Pyan-generated diagrams for `main.py` are available with
+[function names](docs/callgraphs/main-names.svg) or
+[full function signatures](docs/callgraphs/main-signatures.svg).
+PNG copies and editable Graphviz DOT files are in the same directory.
+
+To regenerate them, install Pyan and ensure Graphviz's `dot` command is on PATH:
+
+```bash
+uv tool install pyan3==2.9.0
+uv run python scripts/generate_callgraphs.py
+```
+
+The script preserves Pyan's nodes and edges and adds signature labels parsed
+from the source. The dashed edge denotes the `bisect_left` key callback.
+These are static uses graphs limited to `main.py`; imported functions such as
+`julia_flow.maximum_flow` and Julia's solver internals are outside their scope.
+
 ## Dependencies
 
 Add runtime dependencies with `uv add PACKAGE` and development dependencies with
