@@ -3,7 +3,6 @@ from collections.abc import Callable
 
 from julia_flow import maximum_flow
 
-
 def find_eligible_centers(
     points: list[list[int]],
     centers: list[list[int]],
