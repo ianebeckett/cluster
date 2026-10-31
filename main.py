@@ -1,8 +1,29 @@
 import math
 from bisect import bisect_left
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from julia_flow import maximum_flow
+
+
+@dataclass(frozen=True)
+class ClusteringResult:
+    """A minimum radius and one center index per point, for fixed centers."""
+
+    radius: float
+    assignment: tuple[int, ...]
+
+
+def _validate_load_bounds(k: int, lower_bound: int, upper_bound: int) -> None:
+    for name, value in (
+        ("k", k),
+        ("lower_bound", lower_bound),
+        ("upper_bound", upper_bound),
+    ):
+        if isinstance(value, bool):
+            raise TypeError(f"{name} must be an integer, not a boolean")
+    if k < 0 or not 0 <= lower_bound <= upper_bound:
+        raise ValueError("Require k >= 0 and 0 <= lower_bound <= upper_bound")
 
 
 def find_eligible_centers(
@@ -34,17 +55,9 @@ def find_feasible_assignment(
     Invalid bounds or center indices raise ValueError; Julia failures raise
     RuntimeError rather than being treated as infeasible assignments.
     """
-    for name, value in (
-        ("k", k),
-        ("lower_bound", lower_bound),
-        ("upper_bound", upper_bound),
-    ):
-        if isinstance(value, bool):
-            raise TypeError(f"{name} must be an integer, not a boolean")
+    _validate_load_bounds(k, lower_bound, upper_bound)
     if any(isinstance(j, bool) for choices in eligible_centers for j in choices):
         raise TypeError("Eligible center indices must be integers, not booleans")
-    if k < 0 or not 0 <= lower_bound <= upper_bound:
-        raise ValueError("Require k >= 0 and 0 <= lower_bound <= upper_bound")
     if any(not 0 <= j < k for choices in eligible_centers for j in choices):
         raise ValueError("Eligible center indices must be in range(k)")
 
@@ -60,18 +73,29 @@ def find_feasible_assignment(
     # Points occupy 2..n+1; centers occupy n+2..n+k+1.
     offset = 2
     source, overflow, sink = 1, n + k + offset, n + k + 1 + offset
-    # each edge is described as [u, v, capacity]
-    edges: list[tuple[int, int, int]] = []
-    for point, choices in enumerate(eligible_centers):
-        edges.append((source, point + offset, 1))
-        for center in dict.fromkeys(choices):
-            edges.append((point + offset, n + center + offset, 1))
-    for center in range(k):
-        edges.append((n + center + offset, sink, lower_bound))
-        edges.append((n + center + offset, overflow, min(upper_bound, n) - lower_bound))
+    # Each edge is (from, to, capacity); each group expresses one constraint.
+    supply_edges = ((source, point + offset, 1) for point in range(n))
+    eligibility_edges = (
+        (point + offset, n + center + offset, 1)
+        for point, choices in enumerate(eligible_centers)
+        for center in dict.fromkeys(choices)
+    )
+    minimum_load_edges = (
+        (n + center + offset, sink, lower_bound) for center in range(k)
+    )
+    extra_capacity_edges = (
+        (n + center + offset, overflow, min(upper_bound, n) - lower_bound)
+        for center in range(k)
+    )
     # Total capacity into sink is n. Sending n units saturates every direct
     # center -> sink edge, enforcing minimum loads. Extra load uses overflow.
-    edges.append((overflow, sink, n - k * lower_bound))
+    edges = [
+        *supply_edges,
+        *eligibility_edges,
+        *minimum_load_edges,
+        *extra_capacity_edges,
+        (overflow, sink, n - k * lower_bound),
+    ]
 
     max_flow, edge_flows = maximum_flow(sink, edges)
     if max_flow != n:
@@ -96,48 +120,15 @@ def find_min_radius(
     lower_bound: int = 0,
     distance: Callable[[list[int], list[int]], float] = math.dist,
 ) -> float | None:
-    """Return the smallest feasible point-center distance, or None if impossible.
-
-    Centers are fixed and each must have a load in [lower_bound, upper_bound].
-    Empty points have radius 0.0 when the load bounds permit it. Distances must
-    be finite and nonnegative. Solver failures propagate as RuntimeError.
-    """
-    for name, value in (("lower_bound", lower_bound), ("upper_bound", upper_bound)):
-        if isinstance(value, bool):
-            raise TypeError(f"{name} must be an integer, not a boolean")
-    if not 0 <= lower_bound <= upper_bound:
-        raise ValueError("Require 0 <= lower_bound <= upper_bound")
-
-    n, k = len(points), len(centers)
-    if not k * lower_bound <= n <= k * upper_bound:
-        return None
-    if n == 0:
-        return 0.0
-
-    distances = [[distance(point, center) for center in centers] for point in points]
-    radii = sorted({value for row in distances for value in row})
-    if any(not math.isfinite(radius) or radius < 0 for radius in radii):
-        raise ValueError("Distances must be finite and nonnegative")
-
-    def is_feasible(radius: float) -> bool:
-        eligible_centers = [
-            [center for center, value in enumerate(row) if value <= radius]
-            for row in distances
-        ]
-        return (
-            find_feasible_assignment(
-                eligible_centers,
-                k=k,
-                upper_bound=upper_bound,
-                lower_bound=lower_bound,
-            )
-            is not None
-        )
-
-    # Feasibility is monotone: increasing the radius only adds eligible edges.
-    # bisect_left locates the first True without evaluating every candidate.
-    index = bisect_left(radii, True, key=is_feasible)
-    return radii[index] if index < len(radii) else None
+    """Return only the radius from solve, or None if the load bounds are infeasible."""
+    result = solve(
+        points,
+        centers,
+        upper_bound=upper_bound,
+        lower_bound=lower_bound,
+        distance=distance,
+    )
+    return None if result is None else result.radius
 
 
 def solve(
@@ -147,41 +138,53 @@ def solve(
     upper_bound: int,
     lower_bound: int = 0,
     distance: Callable[[list[int], list[int]], float] = math.dist,
-) -> None:
-    """Print the minimum feasible radius and an assignment for fixed centers."""
-    radius = find_min_radius(
-        points,
-        centers,
-        upper_bound=upper_bound,
-        lower_bound=lower_bound,
-        distance=distance,
-    )
-    if radius is None:
-        print("Infeasible")
-        return
+) -> ClusteringResult | None:
+    """Return the minimum radius and its assignment without printing.
 
-    # Reconstruct an assignment at the minimum radius returned by the search.
-    eligible_centers = find_eligible_centers(points, centers, radius, distance=distance)
-    assignment = find_feasible_assignment(
-        eligible_centers,
-        k=len(centers),
-        upper_bound=upper_bound,
-        lower_bound=lower_bound,
-    )
+    Centers are fixed and each must have a load in [lower_bound, upper_bound].
+    Empty points have radius 0.0 when the load bounds permit it. Distances must
+    be finite and nonnegative. Solver failures propagate as RuntimeError.
 
-    if assignment is None:
-        raise RuntimeError("No assignment found at the minimum feasible radius")
+    Follow Ding (2020), Section 2.1 and Algorithm 1, steps 2-3, for one fixed
+    center tuple: sort candidate distances, binary-search feasibility, and
+    retain the best feasible solution. Use point-level flow as the baseline.
+    """
+    n, k = len(points), len(centers)
+    _validate_load_bounds(k, lower_bound, upper_bound)
+    if not k * lower_bound <= n <= k * upper_bound:
+        return None
+    if n == 0:
+        return ClusteringResult(radius=0.0, assignment=())
 
-    maximum_distance = max(
-        (
-            distance(point, centers[center])
-            for point, center in zip(points, assignment, strict=True)
-        ),
-        default=0.0,
-    )
-    print("Minimum feasible radius:", radius)
-    print("Assignment (center indices):", assignment)
-    print("Maximum assigned p-c distance:", maximum_distance)
+    distances = [[distance(point, center) for center in centers] for point in points]
+    radii = sorted({value for row in distances for value in row})
+    if any(not math.isfinite(radius) or radius < 0 for radius in radii):
+        raise ValueError("Distances must be finite and nonnegative")
+
+    best: ClusteringResult | None = None
+
+    def is_feasible(radius: float) -> bool:
+        nonlocal best
+        eligible_centers = [
+            [center for center, value in enumerate(row) if value <= radius]
+            for row in distances
+        ]
+        assignment = find_feasible_assignment(
+            eligible_centers,
+            k=k,
+            upper_bound=upper_bound,
+            lower_bound=lower_bound,
+        )
+        if assignment is None:
+            return False
+        if best is None or radius < best.radius:
+            best = ClusteringResult(radius=radius, assignment=tuple(assignment))
+        return True
+
+    # Feasibility is monotone: increasing the radius only adds eligible edges.
+    # bisect_left locates the first True without evaluating every candidate.
+    _ = bisect_left(radii, True, key=is_feasible)
+    return best
 
 
 def main() -> None:
@@ -190,16 +193,29 @@ def main() -> None:
     print("Points:", points)
     print("Fixed centers:", centers)
 
-    # Both points fit at center 0, so the minimum radius is 1.
-    print("\nCapacity 2 per center:")
-    solve(points, centers, upper_bound=2)
-
-    # Center 1 must receive a point. Point 1 is its closest option, at distance 9.
-    print("\nExactly 1 point per center:")
-    solve(points, centers, lower_bound=1, upper_bound=1)
-
-    print("\nZero capacity:")
-    solve(points, centers, upper_bound=0)
+    examples = (
+        ("Capacity 2 per center", 0, 2),  # Both points fit at center 0: radius 1.
+        ("Exactly 1 point per center", 1, 1),  # Point 1 must use center 1: radius 9.
+        ("Zero capacity", 0, 0),
+    )
+    for label, lower_bound, upper_bound in examples:
+        print(f"\n{label}:")
+        result = solve(
+            points, centers, lower_bound=lower_bound, upper_bound=upper_bound
+        )
+        if result is None:
+            print("Infeasible")
+            continue
+        maximum_distance = max(
+            (
+                math.dist(point, centers[center])
+                for point, center in zip(points, result.assignment, strict=True)
+            ),
+            default=0.0,
+        )
+        print("Minimum feasible radius:", result.radius)
+        print("Assignment (center indices):", list(result.assignment))
+        print("Maximum assigned p-c distance:", maximum_distance)
 
 
 if __name__ == "__main__":

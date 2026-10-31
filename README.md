@@ -62,9 +62,22 @@ uv run python main.py
 The demo keeps centers fixed at `[0]` and `[10]` and assigns points `[0]` and
 `[1]`. With capacity two per center, the minimum radius is `1.0`. Requiring
 exactly one point per center increases it to `9.0`. Zero capacity is infeasible.
-`solve` searches for the minimum radius, reconstructs an assignment there, and
-prints both the radius and the actual maximum assigned distance. Reconstruction
-performs one additional assignment solve after the radius search.
+`main` prints the minimum radius, the assignment, and the actual maximum
+assigned distance for each example.
+
+`solve` returns a frozen `ClusteringResult` with `radius` and `assignment` fields,
+or `None` if the load constraints are infeasible. The assignment is a tuple of
+center indices in point order. It does not print or modify its inputs, so it can
+be called directly by tests and benchmarks:
+
+```python
+from main import solve
+
+result = solve([[0], [1]], [[0], [10]], lower_bound=1, upper_bound=1)
+if result is not None:
+    print(result.radius)      # 9.0
+    print(result.assignment)  # (0, 1)
+```
 
 `find_eligible_centers` computes the allowed center indices for each point within
 the trial radius, preserving point order. `find_feasible_assignment` uses these
@@ -73,13 +86,25 @@ An assignment is feasible only when every point can be assigned and every
 center's load is between the supplied minimum and capacity. Julia's flow value
 must equal the number of points; the assignment is extracted from its edge flows.
 
-`find_min_radius(points, centers, upper_bound=..., lower_bound=0)` finds the
-smallest feasible radius for the supplied centers. It computes each point-center
-distance once, sorts the distinct distances, and uses `bisect_left` with an
-assignment feasibility check. No radius tolerance is needed. It returns `None`
-when the load constraints cannot be satisfied, or `0.0` for empty points when
-the load bounds allow them. A custom `distance` must return finite, nonnegative
-values; invalid bounds or distances raise an error.
+The fixed-center baseline follows Section 2.1 and the per-tuple procedure in
+Algorithm 1, steps 2–3, of [Ding (2020)](https://doi.org/10.1016/j.tcs.2020.07.022):
+
+1. Compute each point-center distance once and sort the distinct candidate radii.
+2. Use `bisect_left` to search feasibility, building a point-level flow network
+   at each trial radius with the original lower and upper load bounds.
+3. Retain the smallest feasible radius and its integral assignment. Return that
+   result without repeating the winning flow computation.
+
+The search keeps only the best assignment in local state, rather than caching
+every trial. This baseline uses supplied centers; it does not implement the
+paper's center selection, outer center-tuple enumeration, or eligibility grouping.
+
+`find_min_radius(points, centers, upper_bound=..., lower_bound=0)` remains a
+radius-only interface to `solve`. No radius tolerance is needed. Empty points
+have radius `0.0` and an empty assignment when the load bounds allow them.
+A custom `distance` must return finite, nonnegative values; invalid bounds or
+distances raise an error. Radius optimality is with respect to the computed
+distances and supplied centers.
 
 The bridge starts Julia on the first nontrivial flow request and reuses that
 process until Python exits or `julia_flow.close()` is called. Missing Julia,

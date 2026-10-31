@@ -5,7 +5,7 @@ from random import Random
 import pytest
 
 import main
-from main import find_min_radius
+from main import find_min_radius, solve
 
 
 @pytest.mark.parametrize(
@@ -126,6 +126,26 @@ def test_matches_exhaustive_assignments(seed: int) -> None:
         )
         if expected is None or radius < expected:
             expected = radius
+
+    result = solve(points, centers, lower_bound=lower_bound, upper_bound=upper_bound)
+    if expected is None:
+        assert result is None
+    else:
+        assert result is not None
+        assert result.radius == expected
+        assert len(result.assignment) == len(points)
+        assert all(0 <= center < len(centers) for center in result.assignment)
+        assert all(
+            lower_bound <= result.assignment.count(center) <= upper_bound
+            for center in range(len(centers))
+        )
+        assert (
+            max(
+                math.dist(point, centers[center])
+                for point, center in zip(points, result.assignment, strict=True)
+            )
+            == expected
+        )
 
     assert (
         find_min_radius(
