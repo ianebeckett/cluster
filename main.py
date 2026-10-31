@@ -50,12 +50,12 @@ def find_feasible_assignment(
         isinstance(j, bool) for choices in eligible_centers_by_point for j in choices
     ):
         raise TypeError("Eligible center indices must be integers, not booleans")
-    if k < 0 or not 0 <= L <= U:
-        raise ValueError("Require k >= 0 and 0 <= L <= U")
+    n = len(eligible_centers_by_point)
+    if k < 0 or not 0 <= L <= U <= n:
+        raise ValueError("Require k >= 0 and 0 <= L <= U <= n")
     if any(not 0 <= j < k for choices in eligible_centers_by_point for j in choices):
         raise ValueError("Eligible center indices must be in range(k)")
 
-    n = len(eligible_centers)
     if any(not choices for choices in eligible_centers_by_point):
         return None  # A centerless point cannot be assigned.
     if not k * L <= n <= k * U:
@@ -75,7 +75,7 @@ def find_feasible_assignment(
             edges.append((point + offset, n + center + offset, 1))
     for center in range(k):
         edges.append((n + center + offset, sink, L))
-        edges.append((n + center + offset, overflow, min(U, n) - L))
+        edges.append((n + center + offset, overflow, U - L))
     # Total capacity into sink is n. Sending n units saturates every direct
     # center -> sink edge, enforcing minimum loads. Extra load uses overflow.
     edges.append((overflow, sink, n - k * L))
@@ -105,17 +105,17 @@ def find_min_radius(
 ) -> float | None:
     """Return the smallest feasible point-center distance, or None if impossible.
 
-    Centers are fixed and each must have a load in [L, U].
-    Empty points have radius 0.0 when the load bounds permit it. Distances must
+    Centers are fixed and each must have a load in [L, U], with U <= len(points).
+    Empty points have radius 0.0 only when L = U = 0. Distances must
     be finite and nonnegative. Solver failures propagate as RuntimeError.
     """
     for name, value in (("L", L), ("U", U)):
         if isinstance(value, bool):
             raise TypeError(f"{name} must be an integer, not a boolean")
-    if not 0 <= L <= U:
-        raise ValueError("Require 0 <= L <= U")
-
     n, k = len(points), len(centers)
+    if not 0 <= L <= U <= n:
+        raise ValueError("Require 0 <= L <= U <= n")
+
     if not k * L <= n <= k * U:
         return None
     if n == 0:

@@ -84,6 +84,12 @@ when the load constraints cannot be satisfied, or `0.0` for empty points when
 the load bounds allow them. A custom `distance` must return finite, nonnegative
 values; invalid bounds or distances raise an error.
 
+Load bounds must satisfy `0 <= L <= U <= n`, where `n` is the number of points.
+In particular, `U > n` raises `ValueError` before any feasibility check, following
+the upper-bound restriction in Ding's Algorithm 1. For empty points, only
+`L = U = 0` is accepted. Valid bounds whose combined minimum loads or capacities
+cannot accommodate all points still yield `None` (infeasible).
+
 The bridge starts Julia on the first nontrivial flow request and reuses that
 process until Python exits or `julia_flow.close()` is called. Missing Julia,
 missing solver source, and solver failures raise `RuntimeError`, rather than

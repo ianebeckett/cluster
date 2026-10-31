@@ -5,6 +5,12 @@ import pytest
 from main import solve
 
 
+@pytest.mark.parametrize("points", [[], [[0]]])
+def test_capacity_exceeds_point_count(points: list[list[int]]) -> None:
+    with pytest.raises(ValueError, match="U <= n"):
+        solve(points, [[0]], U=len(points) + 1)
+
+
 @pytest.mark.parametrize(
     "points,centers,L,U,radius,assignment",
     [

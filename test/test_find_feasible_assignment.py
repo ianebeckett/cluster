@@ -6,8 +6,29 @@ from main import find_feasible_assignment
 @pytest.mark.parametrize(
     "eligible_centers_by_point,k,L,U",
     [
+        ([], 0, 0, 1),
+        ([], 1, 1, 1),
+        ([list[int]()], 1, 0, 2),
+        ([[0]], 1, 0, 2),
+    ],
+)
+def test_capacity_exceeds_point_count(
+    eligible_centers_by_point: list[list[int]], k: int, L: int, U: int
+) -> None:
+    with pytest.raises(ValueError, match="U <= n"):
+        _ = find_feasible_assignment(eligible_centers_by_point, k=k, L=L, U=U)
+
+
+@pytest.mark.parametrize("n", [0, 1, 3])
+def test_capacity_equals_point_count(n: int) -> None:
+    assert find_feasible_assignment([[0]] * n, k=1, U=n) == [0] * n
+
+
+@pytest.mark.parametrize(
+    "eligible_centers_by_point,k,L,U,feasible",
+    [
         pytest.param([], 0, 0, 0, True, id="no-points-no-centers"),
-        pytest.param([], 1, 0, 1, True, id="no-points-zero-minimum-load"),
+        pytest.param([], 1, 0, 0, True, id="no-points-zero-minimum-load"),
         pytest.param([[0], []], 1, 0, 2, False, id="one-centerless-point"),
         pytest.param([[0]], 1, 0, 0, False, id="zero-capacity"),
         pytest.param(
@@ -18,12 +39,18 @@ from main import find_feasible_assignment
         pytest.param(
             [[0, 1], [0], [0], [1]], 3, 0, 2, True, id="rerouting-with-unused-center"
         ),
-        # One center, with loads below, at, between, and above its bounds.
-        pytest.param([], 1, 1, 1, False, id="no-points-positive-minimum-load"),
-        pytest.param([[0]], 1, 2, 4, False, id="below-minimum-load"),
-        # The coefficient on eligible_centers represents n points.
-        pytest.param([[0]] * 2, 1, 2, 4, True, id="at-minimum-load"),
-        pytest.param([[0]] * 3, 1, 2, 4, True, id="between-minimum-load-and-capacity"),
+        # Valid per-center bounds, but too few points to meet all minimums.
+        pytest.param([[0, 1]] * 3, 2, 2, 3, False, id="below-minimum-load"),
+        # The coefficient on eligible_centers_by_point represents n points.
+        pytest.param([[0]] * 2 + [[1]] * 2, 2, 2, 4, True, id="at-minimum-load"),
+        pytest.param(
+            [[0]] * 3 + [[1]] * 3,
+            2,
+            2,
+            4,
+            True,
+            id="between-minimum-load-and-capacity",
+        ),
         pytest.param([[0]] * 4, 1, 2, 4, True, id="at-capacity"),
         # Three points need center 0's two slots, despite four slots overall.
         pytest.param([[0]] * 3, 2, 0, 2, False, id="exceeds-individual-capacity"),

@@ -9,6 +9,28 @@ from main import find_min_radius
 
 
 @pytest.mark.parametrize(
+    "points,centers,L,U",
+    [
+        ([], [], 0, 1),
+        ([], [[0]], 1, 1),
+        ([[0]], [], 0, 2),
+        ([[0]], [[0]], 0, 2),
+    ],
+)
+def test_capacity_exceeds_point_count(
+    points: list[list[int]], centers: list[list[int]], L: int, U: int
+) -> None:
+    with pytest.raises(ValueError, match="U <= n"):
+        _ = find_min_radius(points, centers, L=L, U=U)
+
+
+@pytest.mark.parametrize("n", [0, 1, 3])
+def test_capacity_equals_point_count(n: int) -> None:
+    points = [[i] for i in range(n)]
+    assert find_min_radius(points, [[0]], U=n) == float(max(n - 1, 0))
+
+
+@pytest.mark.parametrize(
     "points,centers,L,U,expected",
     [
         pytest.param([[0]], [[0]], 0, 1, 0.0, id="zero-radius"),
@@ -23,11 +45,10 @@ from main import find_min_radius
         ),
         pytest.param([[0, 0]], [[1, 1]], 0, 1, math.sqrt(2), id="fractional-distance"),
         pytest.param([[0], [1]], [[0]], 0, 1, None, id="insufficient-capacity"),
-        pytest.param([[0]], [[0], [1]], 1, 2, None, id="insufficient-points"),
+        pytest.param([[0]], [[0], [1]], 1, 1, None, id="insufficient-points"),
         pytest.param([[0]], [], 0, 1, None, id="no-centers"),
         pytest.param([], [], 0, 0, 0.0, id="empty-instance"),
-        pytest.param([], [[0]], 0, 1, 0.0, id="empty-points-zero-minimum"),
-        pytest.param([], [[0]], 1, 1, None, id="empty-points-positive-minimum"),
+        pytest.param([], [[0]], 0, 0, 0.0, id="empty-points-zero-minimum"),
     ],
 )
 def test_find_min_radius(
@@ -102,8 +123,8 @@ def test_matches_exhaustive_assignments(seed: int) -> None:
     rng = Random(seed)
     points = [[rng.randrange(8), rng.randrange(8)] for _ in range(rng.randint(1, 5))]
     centers = [[rng.randrange(8), rng.randrange(8)] for _ in range(rng.randint(1, 3))]
-    L = rng.randrange(3)
-    U = rng.randint(max(1, L), len(points) + L)
+    L = rng.randint(0, min(2, len(points)))
+    U = rng.randint(max(1, L), len(points))
 
     # Enumerate whole assignments independently of binary search and max flow.
     expected: float | None = None
