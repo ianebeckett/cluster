@@ -143,12 +143,25 @@ def find_min_radius(
 def solve(
     points: list[list[int]],
     centers: list[list[int]],
-    radius: float,
     *,
     upper_bound: int,
     lower_bound: int = 0,
+    distance: Callable[[list[int], list[int]], float] = math.dist,
 ) -> None:
-    eligible_centers = find_eligible_centers(points, centers, radius)
+    """Print the minimum feasible radius and an assignment for fixed centers."""
+    radius = find_min_radius(
+        points,
+        centers,
+        upper_bound=upper_bound,
+        lower_bound=lower_bound,
+        distance=distance,
+    )
+    if radius is None:
+        print("Infeasible")
+        return
+
+    # Reconstruct an assignment at the minimum radius returned by the search.
+    eligible_centers = find_eligible_centers(points, centers, radius, distance=distance)
     assignment = find_feasible_assignment(
         eligible_centers,
         k=len(centers),
@@ -157,20 +170,36 @@ def solve(
     )
 
     if assignment is None:
-        print("Infeasible")
-    else:
-        print("Feasible:", assignment)
+        raise RuntimeError("No assignment found at the minimum feasible radius")
+
+    maximum_distance = max(
+        (
+            distance(point, centers[center])
+            for point, center in zip(points, assignment, strict=True)
+        ),
+        default=0.0,
+    )
+    print("Minimum feasible radius:", radius)
+    print("Assignment (center indices):", assignment)
+    print("Maximum assigned p-c distance:", maximum_distance)
 
 
 def main() -> None:
-    points = [[0]]
-    centers = [[0]]
+    points = [[0], [1]]
+    centers = [[0], [10]]
+    print("Points:", points)
+    print("Fixed centers:", centers)
 
-    # Infeasible: the center has zero capacity.
-    solve(points, centers, radius=0, upper_bound=0)
+    # Both points fit at center 0, so the minimum radius is 1.
+    print("\nCapacity 2 per center:")
+    solve(points, centers, upper_bound=2)
 
-    # Feasible: the center has capacity for the point.
-    solve(points, centers, radius=0, upper_bound=1)
+    # Center 1 must receive a point. Point 1 is its closest option, at distance 9.
+    print("\nExactly 1 point per center:")
+    solve(points, centers, lower_bound=1, upper_bound=1)
+
+    print("\nZero capacity:")
+    solve(points, centers, upper_bound=0)
 
 
 if __name__ == "__main__":

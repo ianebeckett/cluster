@@ -59,6 +59,13 @@ To skip coverage for a particular run, use `uv run pytest --no-cov`.
 uv run python main.py
 ```
 
+The demo keeps centers fixed at `[0]` and `[10]` and assigns points `[0]` and
+`[1]`. With capacity two per center, the minimum radius is `1.0`. Requiring
+exactly one point per center increases it to `9.0`. Zero capacity is infeasible.
+`solve` searches for the minimum radius, reconstructs an assignment there, and
+prints both the radius and the actual maximum assigned distance. Reconstruction
+performs one additional assignment solve after the radius search.
+
 `find_eligible_centers` computes the allowed center indices for each point within
 the trial radius, preserving point order. `find_feasible_assignment` uses these
 lists to build a network and calls `newMaxFlow.maxflow` through `julia_flow.py`.
