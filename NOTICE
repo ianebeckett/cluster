@@ -1,0 +1,50 @@
+Copyright and third-party attribution
+====================================
+
+Original project code
+---------------------
+Copyright (c) 2026 Ian Beckett
+
+The original Python application, Python-Julia integration (julia_flow.py,
+including its worker protocol), tests, and supporting scripts are licensed
+under the MIT License in LICENSE. The attribution below applies to the
+borrowed Julia solver code, not to this original integration code.
+
+Third-party Julia solver code
+----------------------------
+Copyright (c) 2026 Seongjune Han
+
+Source: https://github.com/shan-mcs/minecc-combinatorial
+Inspected upstream revision: cea32a62eec8ab00b80c25ccf755d327d919f748
+Local source directory: julia_solvers/
+Solver loaded by this project: julia_solvers/st-cut/newMaxFlow.jl
+Upstream license:
+https://github.com/shan-mcs/minecc-combinatorial/blob/cea32a62eec8ab00b80c25ccf755d327d919f748/LICENSE
+
+The Julia source directory is supplied separately and is not tracked by this
+repository. Preserve its upstream copyright and license notices when copying
+or distributing that code. Dependencies and datasets retain their own notices.
+
+The upstream MIT license is reproduced below without alteration:
+
+MIT License
+
+Copyright (c) 2026 Seongjune Han
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
