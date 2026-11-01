@@ -2,6 +2,8 @@ import math
 
 import pytest
 
+import main
+from julia_flow import maximum_flow
 from main import solve
 
 
@@ -50,3 +52,18 @@ def test_solve_uses_custom_distance(capsys: pytest.CaptureFixture[str]) -> None:
     assert "Minimum feasible radius: 2.0\n" in output
     assert "Assignment (center indices): [0]\n" in output
     assert "Maximum assigned p-c distance: 2.0\n" in output
+
+
+def test_solve_does_not_repeat_winning_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[int, tuple[tuple[int, int, int], ...]]] = []
+
+    def counting_flow(
+        node_count: int, edges: list[tuple[int, int, int]]
+    ) -> tuple[int, list[int]]:
+        calls.append((node_count, tuple(edges)))
+        return maximum_flow(node_count, edges)
+
+    monkeypatch.setattr(main, "maximum_flow", counting_flow)
+    solve([[0], [1]], [[0], [10]], L=1, U=1)
+    assert calls
+    assert len(calls) == len(set(calls)), "The winning network was solved again"

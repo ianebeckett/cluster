@@ -13,23 +13,6 @@ class ClusteringResult:
     assignment: tuple[int, ...]
 
 
-def find_eligible_centers(
-    points: list[list[int]],
-    centers: list[list[int]],
-    radius: float,
-    *,
-    distance: Callable[[list[int], list[int]], float] = math.dist,
-) -> list[list[int]]:
-    """Return eligible center indices for each point, preserving input order.
-
-    Result row i contains indices into centers for points[i]
-    """
-    return [
-        [j for j, center in enumerate(centers) if distance(point, center) <= radius]
-        for point in points
-    ]
-
-
 def _validate_load_bounds(*, n: int, k: int, L: int, U: int) -> None:
     """Validate load-bound inputs; assignment feasibility is checked separately."""
     for name, value in (("k", k), ("L", L), ("U", U)):
@@ -165,8 +148,7 @@ def find_minimax_assignment(
     while lo < hi:
         mid = (lo + hi) // 2
         radius = radii[mid]
-        # Filter cached distances; find_eligible_centers would recompute every
-        # point-center distance for each trial radius.
+        # Filter cached distances to avoid recomputing them for each trial radius.
         eligible_centers_by_point = [
             [center for center, value in enumerate(row) if value <= radius]
             for row in distances

@@ -1,11 +1,37 @@
 import math
+from collections.abc import Callable
 from itertools import product
 from random import Random
 
 import pytest
 
 import main
-from main import find_min_radius
+from main import ClusteringResult, find_minimax_assignment
+
+
+def _assert_valid_assignment(
+    result: ClusteringResult,
+    points: list[list[int]],
+    centers: list[list[int]],
+    L: int,
+    U: int,
+    distance: Callable[[list[int], list[int]], float] = math.dist,
+) -> None:
+    assert len(result.assignment) == len(points)
+    assert all(0 <= center < len(centers) for center in result.assignment)
+    assert all(
+        L <= result.assignment.count(center) <= U for center in range(len(centers))
+    )
+    assert (
+        max(
+            (
+                distance(point, centers[center])
+                for point, center in zip(points, result.assignment, strict=True)
+            ),
+            default=0.0,
+        )
+        == result.radius
+    )
 
 
 @pytest.mark.parametrize(
@@ -21,13 +47,16 @@ def test_capacity_exceeds_point_count(
     points: list[list[int]], centers: list[list[int]], L: int, U: int
 ) -> None:
     with pytest.raises(ValueError, match="U <= n"):
-        _ = find_min_radius(points, centers, L=L, U=U)
+        _ = find_minimax_assignment(points, centers, L=L, U=U)
 
 
 @pytest.mark.parametrize("n", [0, 1, 3])
 def test_capacity_equals_point_count(n: int) -> None:
     points = [[i] for i in range(n)]
-    assert find_min_radius(points, [[0]], U=n) == float(max(n - 1, 0))
+    result = find_minimax_assignment(points, [[0]], U=n)
+    assert result is not None
+    assert result.radius == float(max(n - 1, 0))
+    _assert_valid_assignment(result, points, [[0]], 0, n)
 
 
 @pytest.mark.parametrize(
@@ -51,30 +80,47 @@ def test_capacity_equals_point_count(n: int) -> None:
         pytest.param([], [[0]], 0, 0, 0.0, id="empty-points-zero-minimum"),
     ],
 )
-def test_find_min_radius(
+def test_find_minimax_assignment(
     points: list[list[int]],
     centers: list[list[int]],
     L: int,
     U: int,
     expected: float | None,
 ) -> None:
-    assert find_min_radius(points, centers, L=L, U=U) == expected
+    result = find_minimax_assignment(points, centers, L=L, U=U)
+    if expected is None:
+        assert result is None
+    else:
+        assert result is not None
+        assert result.radius == expected
+        _assert_valid_assignment(result, points, centers, L, U)
+
+
+def test_preserves_point_order_when_rerouting() -> None:
+    points, centers = [[1], [0]], [[0], [2]]
+    result = find_minimax_assignment(points, centers, L=1, U=1)
+    assert result is not None
+    assert result.radius == 1.0
+    # Point 1 can only use center 0 at this radius, forcing point 0 to center 1.
+    assert result.assignment == (1, 0)
+    _assert_valid_assignment(result, points, centers, 1, 1)
 
 
 def test_custom_distance() -> None:
     def manhattan(a: list[int], b: list[int]) -> float:
         return float(sum(abs(x - y) for x, y in zip(a, b, strict=True)))
 
-    assert (
-        find_min_radius(
-            [[0, 0], [1, 1]],
-            [[0, 0], [3, 3]],
-            L=1,
-            U=1,
-            distance=manhattan,
-        )
-        == 4.0
+    points, centers = [[0, 0], [1, 1]], [[0, 0], [3, 3]]
+    result = find_minimax_assignment(
+        points,
+        centers,
+        L=1,
+        U=1,
+        distance=manhattan,
     )
+    assert result is not None
+    assert result.radius == 4.0
+    _assert_valid_assignment(result, points, centers, 1, 1, manhattan)
 
 
 @pytest.mark.parametrize("points", [[], [[0]]])
@@ -95,7 +141,7 @@ def test_invalid_bounds(
     error: type[Exception],
 ) -> None:
     with pytest.raises(error):
-        _ = find_min_radius(points, [[0]], L=L, U=U)
+        _ = find_minimax_assignment(points, [[0]], L=L, U=U)
 
 
 @pytest.mark.parametrize("value", [-1.0, math.inf, -math.inf, math.nan])
@@ -104,7 +150,7 @@ def test_invalid_distance(value: float) -> None:
         return value
 
     with pytest.raises(ValueError, match="finite and nonnegative"):
-        _ = find_min_radius([[0]], [[1]], U=1, distance=distance)
+        _ = find_minimax_assignment([[0]], [[1]], U=1, distance=distance)
 
 
 def test_solver_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -115,7 +161,7 @@ def test_solver_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(main, "maximum_flow", fail)
     with pytest.raises(RuntimeError, match="Solver failed"):
-        _ = find_min_radius([[0]], [[1]], U=1)
+        _ = find_minimax_assignment([[0]], [[1]], U=1)
 
 
 @pytest.mark.parametrize("seed", range(20))
@@ -140,4 +186,29 @@ def test_matches_exhaustive_assignments(seed: int) -> None:
         if expected is None or radius < expected:
             expected = radius
 
-    assert find_min_radius(points, centers, L=L, U=U) == expected
+    result = find_minimax_assignment(points, centers, L=L, U=U)
+    if expected is None:
+        assert result is None
+    else:
+        assert result is not None
+        assert result.radius == expected
+        _assert_valid_assignment(result, points, centers, L, U)
+
+
+def test_search_reuses_distances_without_mutating_inputs() -> None:
+    points, centers = [[0], [1]], [[0], [10]]
+    original_points = [point.copy() for point in points]
+    original_centers = [center.copy() for center in centers]
+    calls = 0
+
+    def distance(a: list[int], b: list[int]) -> float:
+        nonlocal calls
+        calls += 1
+        return math.dist(a, b)
+
+    result = find_minimax_assignment(points, centers, L=1, U=1, distance=distance)
+    assert result is not None
+    assert result.radius == 9.0
+    assert calls == len(points) * len(centers)
+    assert points == original_points
+    assert centers == original_centers

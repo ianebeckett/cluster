@@ -2,7 +2,7 @@
 
 Requires the pyan3 and Graphviz dot executables on PATH. Does not import or run
 main.py. Pyan supplies the nodes and edges; this script only adjusts labels and
-presentation, including identifying the bisect_left key callback.
+presentation.
 """
 
 import ast
@@ -55,11 +55,7 @@ def render_dot(
     raw: str, labels: dict[str, tuple[str, str]], *, signatures: bool
 ) -> str:
     variant = "Full function signatures" if signatures else "Function names"
-    title = (
-        f"main.py - {variant}\n"
-        "Pyan static uses graph; external calls are omitted.\n"
-        "Dashed edge: callback passed to bisect_left."
-    )
+    title = f"main.py - {variant}\nPyan static uses graph; external calls are omitted."
     output: list[str] = []
     labeled: set[str] = set()
     for line in raw.splitlines():
@@ -90,9 +86,6 @@ def render_dot(
             line = line.replace('style="filled"', 'style="rounded,filled"')
             line = line.replace('fillcolor="#feccccb2"', 'fillcolor="#e8f1fb"')
             line = line.replace('fillcolor="#ff9999b2"', 'fillcolor="#d5e5f8"')
-        # Preserve Pyan's edge, but distinguish a callback reference from a direct call.
-        if re.search(r'"main__[^" ]+" -> "main__[^" ]+__is_feasible"', line):
-            line = line.replace('style="solid"', 'style="dashed", label="key callback"')
         output.append(line)
     if labeled != labels.keys():
         raise ValueError(f"Pyan did not emit all functions: {labels.keys() - labeled}")

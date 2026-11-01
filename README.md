@@ -62,12 +62,11 @@ uv run python main.py
 The demo keeps centers fixed at `[0]` and `[10]` and assigns points `[0]` and
 `[1]`. With capacity two per center, the minimum radius is `1.0`. Requiring
 exactly one point per center increases it to `9.0`. Zero capacity is infeasible.
-`solve` searches for the minimum radius, reconstructs an assignment there, and
-prints both the radius and the actual maximum assigned distance. Reconstruction
-performs one additional assignment solve after the radius search.
+`solve` prints the minimum radius, the assignment retained by the search, and
+the actual maximum assigned distance.
 
-`find_eligible_centers` computes the allowed center indices for each point within
-the trial radius, preserving point order. In `eligible_centers_by_point[i]`,
+For each trial radius, `find_minimax_assignment` filters the cached distances
+to produce eligible center indices in point order. In `eligible_centers_by_point[i]`,
 `i` is the position of `points[i]` in the original input, and the row contains
 indices into `centers`.
 `find_feasible_assignment` uses these lists to build a network and calls
@@ -76,13 +75,27 @@ An assignment is feasible only when every point can be assigned and every
 center's load is between the supplied minimum and capacity. Julia's flow value
 must equal the number of points; the assignment is extracted from its edge flows.
 
-`find_min_radius(points, centers, U=..., L=0)` finds the
-smallest feasible radius for the supplied centers. It computes each point-center
-distance once, sorts the distinct distances, and uses `bisect_left` with an
-assignment feasibility check. No radius tolerance is needed. It returns `None`
-when the load constraints cannot be satisfied, or `0.0` for empty points when
-the load bounds allow them. A custom `distance` must return finite, nonnegative
-values; invalid bounds or distances raise an error.
+`find_minimax_assignment(points, centers, U=..., L=0)` returns a frozen
+`ClusteringResult` with a `radius` and an `assignment` tuple of center indices in
+original point order. It computes each point-center distance once, sorts the
+distinct distances, and explicitly binary-searches the candidate indices. Each
+successful trial records its radius and assignment before searching smaller
+candidates, following Ding's Algorithm 1, step 3(b), for supplied centers.
+Only the best assignment is retained; no radius tolerance is needed.
+
+It returns `None` when the load constraints cannot be satisfied. Empty points
+with `L = U = 0` return radius `0.0` and an empty assignment. A custom `distance`
+must return finite, nonnegative values; invalid bounds or distances raise an
+error.
+
+```python
+from main import find_minimax_assignment
+
+result = find_minimax_assignment([[0], [1]], [[0], [10]], L=1, U=1)
+if result is not None:
+    print(result.radius)      # 9.0
+    print(result.assignment)  # (0, 1)
+```
 
 Load bounds must satisfy `0 <= L <= U <= n`, where `n` is the number of points.
 In particular, `U > n` raises `ValueError` before any feasibility check, following
@@ -100,7 +113,6 @@ returning `None` for an infeasible assignment.
 Pyan-generated diagrams for `main.py` are available with
 [function names](docs/callgraphs/main-names.svg) or
 [full function signatures](docs/callgraphs/main-signatures.svg).
-PNG copies and editable Graphviz DOT files are in the same directory.
 
 To regenerate them, install Pyan and ensure Graphviz's `dot` command is on PATH:
 
@@ -109,8 +121,6 @@ uv tool install pyan3==2.9.0
 uv run python scripts/generate_callgraphs.py
 ```
 
-The script preserves Pyan's nodes and edges and adds signature labels parsed
-from the source. The dashed edge denotes the `bisect_left` key callback.
 These are static uses graphs limited to `main.py`; imported functions such as
 `julia_flow.maximum_flow` and Julia's solver internals are outside their scope.
 
