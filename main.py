@@ -1,8 +1,16 @@
 import math
-from bisect import bisect_left
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from julia_flow import maximum_flow
+
+
+@dataclass(frozen=True)
+class ClusteringResult:
+    """A minimax radius and one center index per point, for supplied centers."""
+
+    radius: float
+    assignment: tuple[int, ...]
 
 
 def find_eligible_centers(
@@ -121,19 +129,21 @@ def find_feasible_assignment(
     return assignment
 
 
-def find_min_radius(
+def find_minimax_assignment(
     points: list[list[int]],
     centers: list[list[int]],
     *,
     U: int,
     L: int = 0,
     distance: Callable[[list[int], list[int]], float] = math.dist,
-) -> float | None:
-    """Return the smallest feasible point-center distance, or None if impossible.
+) -> ClusteringResult | None:
+    """Return a minimum-radius assignment for fixed centers, or None if impossible.
 
     Centers are fixed and each must have a load in [L, U], with U <= len(points).
-    Empty points have radius 0.0 only when L = U = 0. Distances must
-    be finite and nonnegative. Solver failures propagate as RuntimeError.
+    Empty points have radius 0.0 and an empty assignment only when L = U = 0.
+    Distances must be finite and nonnegative. Solver failures propagate as
+    RuntimeError. Follow Ding's per-tuple search: test sorted candidate radii
+    and retain the best feasible solution.
     """
     n, k = len(points), len(centers)
     _validate_load_bounds(n=n, k=k, L=L, U=U)
@@ -141,32 +151,39 @@ def find_min_radius(
     if not k * L <= n <= k * U:
         return None
     if n == 0:
-        return 0.0
+        return ClusteringResult(radius=0.0, assignment=())
 
     distances = [[distance(point, center) for center in centers] for point in points]
     radii = sorted({value for row in distances for value in row})
     if any(not math.isfinite(radius) or radius < 0 for radius in radii):
         raise ValueError("Distances must be finite and nonnegative")
 
-    def is_feasible(radius: float) -> bool:
+    lo, hi = 0, len(radii)
+    best: ClusteringResult | None = None
+    # Search the half-open index interval [lo, hi). A feasible midpoint narrows
+    # the search left; an infeasible midpoint rules out itself and smaller radii.
+    while lo < hi:
+        mid = (lo + hi) // 2
+        radius = radii[mid]
         # Filter cached distances; find_eligible_centers would recompute every
         # point-center distance for each trial radius.
         eligible_centers_by_point = [
             [center for center, value in enumerate(row) if value <= radius]
             for row in distances
         ]
-        return (
-            find_feasible_assignment(
-                eligible_centers_by_point,
-                k=k,
-                U=U,
-                L=L,
-            )
-            is not None
+        assignment = find_feasible_assignment(
+            eligible_centers_by_point,
+            k=k,
+            U=U,
+            L=L,
         )
+        if assignment is None:
+            lo = mid + 1
+        else:
+            best = ClusteringResult(radius=radius, assignment=tuple(assignment))
+            hi = mid
 
-    index = bisect_left(radii, True, key=is_feasible)
-    return radii[index] if index < len(radii) else None
+    return best
 
 
 def solve(
@@ -178,40 +195,26 @@ def solve(
     distance: Callable[[list[int], list[int]], float] = math.dist,
 ) -> None:
     """Print the minimum feasible radius and an assignment for fixed centers."""
-    radius = find_min_radius(
+    result = find_minimax_assignment(
         points,
         centers,
         U=U,
         L=L,
         distance=distance,
     )
-    if radius is None:
+    if result is None:
         print("Infeasible")
         return
-
-    # Reconstruct an assignment at the minimum radius returned by the search.
-    eligible_centers_by_point = find_eligible_centers(
-        points, centers, radius, distance=distance
-    )
-    assignment = find_feasible_assignment(
-        eligible_centers_by_point,
-        k=len(centers),
-        U=U,
-        L=L,
-    )
-
-    if assignment is None:
-        raise RuntimeError("No assignment found at the minimum feasible radius")
 
     maximum_distance = max(
         (
             distance(point, centers[center])
-            for point, center in zip(points, assignment, strict=True)
+            for point, center in zip(points, result.assignment, strict=True)
         ),
         default=0.0,
     )
-    print("Minimum feasible radius:", radius)
-    print("Assignment (center indices):", assignment)
+    print("Minimum feasible radius:", result.radius)
+    print("Assignment (center indices):", list(result.assignment))
     print("Maximum assigned p-c distance:", maximum_distance)
 
 
