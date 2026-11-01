@@ -206,16 +206,14 @@ def main() -> None:
     print("Points:", points)
     print("Fixed centers:", centers)
 
-    # Both points fit at center 0, so the minimum radius is 1.
-    print("\nCapacity 2 per center:")
-    solve(points, centers, U=2)
-
-    # Center 1 must receive a point. Point 1 is its closest option, at distance 9.
-    print("\nExactly 1 point per center:")
-    solve(points, centers, L=1, U=1)
-
-    print("\nZero capacity:")
-    solve(points, centers, U=0)
+    examples = (
+        ("Capacity 2 per center", 0, 2),  # Both points use center 0: radius 1.
+        ("Exactly 1 point per center", 1, 1),  # Point 1 uses center 1: radius 9.
+        ("Zero capacity", 0, 0),
+    )
+    for label, L, U in examples:
+        print(f"\n{label}:")
+        solve(points, centers, L=L, U=U)
 
 
 if __name__ == "__main__":
