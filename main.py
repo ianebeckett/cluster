@@ -127,6 +127,8 @@ def find_min_radius(
         raise ValueError("Distances must be finite and nonnegative")
 
     def is_feasible(radius: float) -> bool:
+        # Filter cached distances; find_eligible_centers would recompute every
+        # point-center distance for each trial radius.
         eligible_centers_by_point = [
             [center for center, value in enumerate(row) if value <= radius]
             for row in distances
@@ -141,8 +143,6 @@ def find_min_radius(
             is not None
         )
 
-    # Feasibility is monotone: increasing the radius only adds eligible edges.
-    # bisect_left locates the first True without evaluating every candidate.
     index = bisect_left(radii, True, key=is_feasible)
     return radii[index] if index < len(radii) else None
 
