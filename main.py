@@ -67,19 +67,44 @@ def find_feasible_assignment(
     # newMaxFlow uses one-based indices, source = 1, and sink = last node.
     # Points occupy 2..n+1; centers occupy n+2..n+k+1.
     offset = 2
-    source, overflow, sink = 1, n + k + offset, n + k + 1 + offset
-    # each edge is described as [u, v, capacity]
-    edges: list[tuple[int, int, int]] = []
-    for point, choices in enumerate(eligible_centers_by_point):
-        edges.append((source, point + offset, 1))
-        for center in dict.fromkeys(choices):
-            edges.append((point + offset, n + center + offset, 1))
-    for center in range(k):
-        edges.append((n + center + offset, sink, L))
-        edges.append((n + center + offset, overflow, U - L))
+    source, overflow, sink = 1, n + k + offset, n + k + offset + 1
+
+    # Each edge is (from, to, capacity); each category expresses a constraint.
+
+    supply_edges = (
+        (source, point + offset, 1)
+        for point in range(n)
+    )
+
+    eligibility_edges = (
+        (point + offset, n + center + offset, 1)
+        for point, choices in enumerate(eligible_centers_by_point)
+        for center in dict.fromkeys(choices)
+    )
+
+    minimum_load_edges = (
+        (n + center + offset, sink, L)
+        for center in range(k)
+    )
+
+    extra_capacity_edges = (
+        (n + center + offset, overflow, U - L)
+        for center in range(k)
+    )
+
+    overflow_edge = [
+        (overflow, sink, n - k * L)
+    ]
+
     # Total capacity into sink is n. Sending n units saturates every direct
     # center -> sink edge, enforcing minimum loads. Extra load uses overflow.
-    edges.append((overflow, sink, n - k * L))
+    edges = [
+        *supply_edges,
+        *eligibility_edges,
+        *minimum_load_edges,
+        *extra_capacity_edges,
+        *overflow_edge
+    ]
 
     max_flow, edge_flows = maximum_flow(sink, edges)
     if max_flow != n:
