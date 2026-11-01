@@ -22,6 +22,15 @@ def find_eligible_centers(
     ]
 
 
+def _validate_load_bounds(*, n: int, k: int, L: int, U: int) -> None:
+    """Validate load-bound inputs; assignment feasibility is checked separately."""
+    for name, value in (("k", k), ("L", L), ("U", U)):
+        if isinstance(value, bool):
+            raise TypeError(f"{name} must be an integer, not a boolean")
+    if k < 0 or not 0 <= L <= U <= n:
+        raise ValueError("Require k >= 0 and 0 <= L <= U <= n")
+
+
 def find_feasible_assignment(
     eligible_centers_by_point: list[list[int]],
     *,
@@ -39,20 +48,12 @@ def find_feasible_assignment(
     Invalid bounds or center indices raise ValueError; Julia failures raise
     RuntimeError rather than being treated as infeasible assignments.
     """
-    for name, value in (
-        ("k", k),
-        ("L", L),
-        ("U", U),
-    ):
-        if isinstance(value, bool):
-            raise TypeError(f"{name} must be an integer, not a boolean")
+    n = len(eligible_centers_by_point)
+    _validate_load_bounds(n=n, k=k, L=L, U=U)
     if any(
         isinstance(j, bool) for choices in eligible_centers_by_point for j in choices
     ):
         raise TypeError("Eligible center indices must be integers, not booleans")
-    n = len(eligible_centers_by_point)
-    if k < 0 or not 0 <= L <= U <= n:
-        raise ValueError("Require k >= 0 and 0 <= L <= U <= n")
     if any(not 0 <= j < k for choices in eligible_centers_by_point for j in choices):
         raise ValueError("Eligible center indices must be in range(k)")
 
@@ -109,12 +110,8 @@ def find_min_radius(
     Empty points have radius 0.0 only when L = U = 0. Distances must
     be finite and nonnegative. Solver failures propagate as RuntimeError.
     """
-    for name, value in (("L", L), ("U", U)):
-        if isinstance(value, bool):
-            raise TypeError(f"{name} must be an integer, not a boolean")
     n, k = len(points), len(centers)
-    if not 0 <= L <= U <= n:
-        raise ValueError("Require 0 <= L <= U <= n")
+    _validate_load_bounds(n=n, k=k, L=L, U=U)
 
     if not k * L <= n <= k * U:
         return None
